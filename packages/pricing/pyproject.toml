@@ -1,0 +1,6 @@
+[project]
+name = "pricing"
+version = "2.1.0"
+description = "Line totals, coupons and sales tax for portal quotes."
+requires-python = ">=3.12"
+dependencies = []

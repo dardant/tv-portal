@@ -1,0 +1,45 @@
+# CI for the portal monorepo. Committed by the repository administrator, never by TandemVelocity (ADR-0040 D7).
+#
+#   tests                every component's tests, the same `pytest -q` a delivery run executes locally;
+#   component-changelog  every component a branch touches must update its own CHANGELOG.md (CONTRIBUTING.md,
+#                        rule 1). Stricter than the local run, on purpose.
+# It runs on push, so a pushed candidate branch is tested at the exact revision TandemVelocity published.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pytest
+      - name: Report the revision under test
+        run: echo "testing ${{ github.sha }} on ${{ github.ref }}"
+      - run: pytest -q
+
+  component-changelog:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Every touched component records the change
+        run: |
+          git fetch --quiet origin main
+          changed="$(git diff --name-only origin/main...HEAD)"
+          printf '%s\n' "$changed"
+          missing=0
+          for component in $(printf '%s\n' "$changed" | grep -E '^(services|packages)/[^/]+/' | cut -d/ -f1-2 | sort -u); do
+            if ! printf '%s\n' "$changed" | grep -qx "$component/CHANGELOG.md"; then
+              echo "::error file=$component/CHANGELOG.md::$component changed without a line in its CHANGELOG.md (CONTRIBUTING.md, rule 1)."
+              missing=1
+            fi
+          done
+          exit "$missing"

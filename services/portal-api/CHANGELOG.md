@@ -5,6 +5,9 @@ Every change to this component adds a line under **Unreleased** (CONTRIBUTING.md
 
 ## Unreleased
 
+### Added
+- Top-up suggestions (Story INV-302): `portal_api.inventory.suggest_topup` plus `POST /suggest` handler returning `suggested_quantity` with 4xx `MISSING_FIELD` / `INVALID_TOPUP_INPUT` on bad input.
+
 ## 1.4.2 - 2026-09-11
 
 ### Fixed

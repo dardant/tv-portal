@@ -9,6 +9,7 @@ from __future__ import annotations
 from pricing import add_tax, apply_discount, coupon_percent, line_total
 
 from portal_api.errors import ClientError
+from portal_api.inventory import suggest_topup as _suggest_topup
 
 VERSION = "1.4.2"
 
@@ -42,3 +43,38 @@ def _quote(request: dict) -> dict:
     discounted = apply_discount(subtotal, percent)
     total = add_tax(discounted, request.get("region", "US-CA"))
     return {"subtotal": subtotal, "discount_percent": percent, "total": total}
+
+
+def suggest(request: dict) -> tuple[int, dict]:
+    """``POST /suggest``: suggest a top-up quantity to reach a target level.
+
+    Request: ``{"quantity", "reorder_point", "target_level"}`` (non-negative
+    integers, ``target_level >= reorder_point``). Response:
+    ``{"quantity", "reorder_point", "target_level", "suggested_quantity"}``.
+    """
+    try:
+        return 200, _suggest(request)
+    except ClientError as exc:
+        return exc.status, {"error": exc.code, "message": str(exc)}
+    except Exception:
+        # The handler boundary: anything that is not a ClientError is our bug, not the caller's.
+        return 500, {"error": "INTERNAL", "message": "internal error"}
+
+
+def _suggest(request: dict) -> dict:
+    try:
+        quantity = request["quantity"]
+        reorder_point = request["reorder_point"]
+        target_level = request["target_level"]
+    except (KeyError, TypeError) as exc:
+        raise ClientError("MISSING_FIELD", f"missing field: {exc.args[0]}" if exc.args else "missing field")
+    try:
+        suggested = _suggest_topup(quantity, reorder_point, target_level)
+    except ValueError as exc:
+        raise ClientError("INVALID_TOPUP_INPUT", str(exc))
+    return {
+        "quantity": quantity,
+        "reorder_point": reorder_point,
+        "target_level": target_level,
+        "suggested_quantity": suggested,
+    }

@@ -12,6 +12,8 @@ from portal_api.errors import ClientError
 
 VERSION = "1.4.2"
 
+SUPPORTED_CURRENCIES = frozenset({"USD", "EUR"})
+
 
 def health() -> tuple[int, dict]:
     """``GET /health``."""
@@ -21,8 +23,10 @@ def health() -> tuple[int, dict]:
 def quote(request: dict) -> tuple[int, dict]:
     """``POST /quote``: price a basket.
 
-    Request: ``{"items": [{"sku", "unit_price", "quantity"}], "region": "US-CA", "coupon": "WELCOME10"}``, where
-    ``coupon`` is optional. Response: ``{"subtotal", "discount_percent", "total"}``.
+    Request: ``{"items": [{"sku", "unit_price", "quantity"}], "region": "US-CA", "coupon": "WELCOME10",
+    "currency": "USD"}``, where ``coupon`` and ``currency`` are optional. ``currency`` defaults to ``"USD"``;
+    only ``"USD"`` and ``"EUR"`` (case-insensitive) are accepted. Any other currency is a 400
+    ``UNSUPPORTED_CURRENCY`` client error. Response: ``{"subtotal", "discount_percent", "total"}``.
     """
     try:
         return 200, _quote(request)
@@ -37,6 +41,12 @@ def _quote(request: dict) -> dict:
     items = request.get("items") or []
     if not items:
         raise ClientError("ITEMS_REQUIRED", "a quote needs at least one item")
+    currency = request.get("currency", "USD")
+    if not isinstance(currency, str) or currency.strip().upper() not in SUPPORTED_CURRENCIES:
+        raise ClientError(
+            "UNSUPPORTED_CURRENCY",
+            f"unsupported currency {currency!r}: only USD and EUR are accepted",
+        )
     subtotal = round(sum(line_total(item["unit_price"], item["quantity"]) for item in items), 2)
     percent = coupon_percent(request["coupon"]) if request.get("coupon") else 0
     discounted = apply_discount(subtotal, percent)

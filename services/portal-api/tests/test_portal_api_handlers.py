@@ -27,3 +27,22 @@ def test_a_quote_without_items_is_a_client_error():
     status, body = quote({"items": [], "region": "DE"})
     assert status == 400
     assert body["error"] == "ITEMS_REQUIRED"
+
+
+def test_a_quote_with_an_unsupported_currency_is_a_client_error():
+    status, body = quote(
+        {"items": [{"sku": "A", "unit_price": 10.0, "quantity": 2}], "region": "DE", "currency": "GBP"}
+    )
+    assert status == 400
+    assert body["error"] == "UNSUPPORTED_CURRENCY"
+
+
+def test_a_quote_accepts_usd_and_eur_case_insensitively():
+    items = [{"sku": "A", "unit_price": 10.0, "quantity": 2}]
+    for currency in ("USD", "EUR", "usd", "eur"):
+        status, body = quote({"items": items, "region": "DE", "currency": currency})
+        assert status == 200
+        assert body["subtotal"] == 20.0
+    status, body = quote({"items": items, "region": "DE"})
+    assert status == 200
+    assert body["subtotal"] == 20.0

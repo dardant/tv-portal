@@ -5,6 +5,10 @@ Every change to this component adds a line under **Unreleased** (CONTRIBUTING.md
 
 ## Unreleased
 
+### Added
+- `POST /quote` accepts an optional `currency` (default `"USD"`); only `USD` and `EUR`
+  (case-insensitive) are accepted and any other currency is a `400 UNSUPPORTED_CURRENCY` error.
+
 ## 1.4.2 - 2026-09-11
 
 ### Fixed
